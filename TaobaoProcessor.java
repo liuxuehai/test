@@ -1,100 +1,140 @@
-package us.codecraft.webmagic.taobao;
+package com.summer.taobao.spider;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
+import com.summer.taobao.domain.Item;
+import com.summer.taobao.domain.Seller;
+import com.summer.taobao.domain.Shop;
 
 import us.codecraft.webmagic.Page;
 import us.codecraft.webmagic.Site;
 import us.codecraft.webmagic.Spider;
 import us.codecraft.webmagic.processor.PageProcessor;
-import us.codecraft.webmagic.selector.Selectable;
 
-public class TaobaoProcessor implements PageProcessor{
-	
-	private  TaobaoConfig config;
-	
-	public TaobaoProcessor(TaobaoConfig config){
-		 this.config=config;
+public class TaobaoProcessor implements PageProcessor {
+	private static Properties properties = new Properties();
+	private TaobaoConfig config;
+
+	public TaobaoProcessor(TaobaoConfig config) {
+		this.config = config;
 	}
+
 	public TaobaoConfig getConfig() {
 		return config;
 	}
+
 	public void setConfig(TaobaoConfig config) {
 		this.config = config;
 	}
+
 	@Override
 	public void process(Page page) {
-		if(page.getUrl().regex(config.getUrl()).match()){
-			page.addTargetRequests(page.getHtml().xpath("//div[@class='pagination']").links().regex(config.getUrlRegex()).all());
+		if (page.getUrl().regex(config.getUrl()).match()) {
+			page.addTargetRequests(page.getHtml().xpath(getXPath("targeturl")).links().regex(config.getUrlRegex()).all());
 			page.addTargetRequests(page.getHtml().links().regex(Config.ITEM_URL).all());
-		}else if (page.getUrl().regex(config.getUrlRegex()).match()) {
-        	//page.getHtml().xpath("//script/html()").regex("\"http://detailskip.taobao.com/json/ifq.htm.*\"")
-        	Selectable links=page.getHtml().links();
-            page.addTargetRequests(links.regex(Config.ITEM_URL).all());
-            page.addTargetRequests(links.regex(config.getUrlRegex()).all());
-        } else if(page.getUrl().regex(Config.ITEM_URL).match()){
-        	Item item=new Item();
-        	item.setItemId(page.getHtml().xpath("//input[@name='item_id']/@value").toString());
-        	item.setItemName(page.getHtml().xpath("//div[@id='J_Title']/h3/text()").toString());
-        	item.setShopId(page.getHtml().xpath("//meta[@name='microscope-data']/@content").toString());
-            page.putField("item", item);
-            
-            if(page.getHtml().xpath("//div[@class='tb-shop-rank']//a/@href").toString().matches(Config.RATE_URL)) {
-           	   page.addTargetRequest(page.getHtml().xpath("//div[@class='tb-shop-rank']//a/@href").toString());
-           }
-        }else if(page.getUrl().regex(Config.RATE_URL).match()){
-        	System.out.println("eee");
-        	String sellerId=page.getHtml().xpath("//input[@id='dsr-userid']/@value").toString();
-        	String sellerRateUrl=page.getHtml().xpath("//input[@id='dsr-ratelink']/@value").toString();
-        	String sellerName=page.getHtml().xpath("//div[@class='col-sub']//div[@class='title']/a/text()").toString();
-        	String sellerSell=page.getHtml().xpath("//div[@class='col-sub']//div[@class='bd']//ul/li[1]/a/text()").toString().trim();
-        	String sellerZone=page.getHtml().xpath("//div[@class='col-sub']//div[@class='bd']//ul/li[2]/text()").toString();
-        	String sellerDate=page.getHtml().xpath("//input[@id='J_showShopStartDate']/@value").toString();
-        	String sellerTrust=page.getHtml().xpath("//div[@class='col-sub']//div[@class='bd']//ul[@class='sep']/li[1]/text()").toString();
-        	String buyerTrust=page.getHtml().xpath("//div[@class='col-sub']//div[@class='bd']//ul[@class='sep']/li[2]/text()").toString();
-        	
-        	String sellerDrscRate=page.getHtml().xpath("//ul[@id='dsr']/li[1]/div/em[1]/@title").toString();
-        	String sellerServiceRate=page.getHtml().xpath("//ul[@id='dsr']/li[2]/div/em[1]/@title").toString();
-        	String sellerShipRate=page.getHtml().xpath("//ul[@id='dsr']/li[3]/div/em[1]/@title").toString();
-        	
-        	
-        	String shopId=page.getHtml().xpath("//input[@id='J_ShopIdHidden']/@value").toString();
-        	String shopDate=page.getHtml().xpath("//input[@id='J_showShopStartDate']/@value").toString();
-        	String shopName=page.getHtml().xpath("//a[@class='shop-name']/text()").toString();
-        	String shopUrl=page.getHtml().xpath("//a[@class='shop-name']/@href").toString();
-        	String shopSellerId=page.getHtml().xpath("//input[@id='dsr-userid']/@value").toString();
-        	String shopVitual=page.getHtml().xpath("//div[@class='rank-popup']//em[@class='virtual']/text()").toString();
-        	String shopNoVitual=page.getHtml().xpath("//div[@class='rank-popup']//em[@class='non-virtual']/text()").toString();
-        	String shopZone=page.getHtml().xpath("//div[@class='popup-content']//div[@class='shop-intro']//dl[2]//span/text()").toString();
-        	String shopNum=page.getHtml().xpath("//div[@class='popup-content']//div[@class='shop-intro']//dl[3]//span/text()").toString();
-        	
-        	String shopDescRate=page.getHtml().xpath("div[@class='shop-credit']//tbody/tr//td[1]//em/@title").toString();
-        	String shopDescInfo=page.getHtml().xpath("div[@class='shop-credit']//tbody/tr//td[2]/a/b/text()").toString()+
-        	page.getHtml().xpath("div[@class='shop-credit']//tbody/tr//td[2]/a/em/text()").toString();
-        	String shopServiceRate=page.getHtml().xpath("div[@class='shop-credit']//tbody/tr[2]//td[1]//em/@title").toString();
-        	String shopServiceInfo=page.getHtml().xpath("div[@class='shop-credit']//tbody/tr[2]//td[2]/a/b/text()").toString()+
-                	page.getHtml().xpath("div[@class='shop-credit']//tbody/tr[2]//td[2]/a/em/text()").toString();
-        	String shopShipRate=page.getHtml().xpath("div[@class='shop-credit']//tbody/tr[3]//td[1]//em/@title").toString();
-        	String shopShipInfo=page.getHtml().xpath("div[@class='shop-credit']//tbody/tr[3]//td[2]/a/b/text()").toString()+
-                	page.getHtml().xpath("div[@class='shop-credit']//tbody/tr[3]//td[2]/a/em/text()").toString();
-        	
-        	String shopGoodRate=page.getHtml().xpath("//div[@class='good-rating']//dd/text()").toString();
-        }
-        
+		}else if (page.getUrl().regex(Config.ITEM_URL).match()) {
+			Item item = new Item();
+			item.setItemId(page.getHtml().xpath(getXPath("item.id")).toString());
+			item.setItemName(page.getHtml().xpath(getXPath("item.name")).toString());
+			int shopId = Integer.valueOf(Util.getShopValue(page.getHtml().xpath(getXPath("item.shopid")).toString(), "shopId"));
+			item.setShopId(shopId);
+			item.setItemUrl(page.getUrl().toString());
+			page.putField("item", item);
+			
+			page.addTargetRequests(page.getHtml().links().regex(Config.RATE_URL).all());
+			
+		} else if (page.getUrl().regex(Config.RATE_URL).match()) {
+			Seller seller = new Seller();
+			String sellerId = page.getHtml().xpath(getXPath("seller.id")).toString();
+			seller.setSellerId(sellerId);
+			String sellerRateUrl = page.getHtml().xpath(getXPath("seller.rateurl")).toString();
+			seller.setSellerRateurl(sellerRateUrl);
+			String sellerName = page.getHtml().xpath(getXPath("seller.name")).toString();
+			seller.setSellerName(sellerName);
+			String sellerSell = page.getHtml().xpath(getXPath("seller.sell")).toString().trim();
+			seller.setSellerSell(sellerSell);
+			String sellerZone = page.getHtml().xpath(getXPath("seller.zone")).toString();
+			seller.setSellerZone(sellerZone);
+			String sellerDate = page.getHtml().xpath(getXPath("seller.date")).toString();
+			seller.setSellerDate(sellerDate);
+			String sellerTrust = page.getHtml().xpath(getXPath("seller.trust")).toString();
+			seller.setSellerTrust(sellerTrust);
+			String buyerTrust = page.getHtml().xpath(getXPath("seller.buyertrust")).toString();
+			seller.setBuyerTrust(buyerTrust);
+
+			String sellerDescRate = page.getHtml().xpath(getXPath("seller.descrate")).toString();
+			seller.setSellerDescrate(sellerDescRate);
+			String sellerServiceRate = page.getHtml().xpath(getXPath("seller.servicerate")).toString();
+			seller.setSellerServicerate(sellerServiceRate);
+			String sellerShipRate = page.getHtml().xpath(getXPath("seller.shiprate")).toString();
+			seller.setSellerShiprate(sellerShipRate);
+			page.putField("seller", seller);
+			Shop shop =new Shop();
+			
+			String shopId = page.getHtml().xpath(getXPath("shop.id")).toString();
+			shop.setShopId(Integer.valueOf(shopId));
+			String shopDate = page.getHtml().xpath(getXPath("shop.date")).toString();
+			shop.setShopDate(shopDate);
+			String shopName = page.getHtml().xpath(getXPath("shop.name")).toString();
+			shop.setShopName(shopName);
+			String shopUrl = page.getHtml().xpath(getXPath("shop.url")).toString();
+			shop.setShopUrl(shopUrl);
+			String shopSellerId = page.getHtml().xpath(getXPath("shop.sellerid")).toString();
+			shop.setSellerId(Integer.valueOf(shopSellerId));
+			String shopVitual = page.getHtml().xpath(getXPath("shop.vitual")).toString();
+			shop.setShopVitual(shopVitual);
+			
+			String shopNoVitual = page.getHtml().xpath(getXPath("shop.novitual")).toString();
+			shop.setShopNovitual(shopNoVitual);
+			String shopZone = page.getHtml().xpath(getXPath("shop.zone")).toString();
+			shop.setShopPro(shopZone);
+			String shopNum = page.getHtml().xpath(getXPath("shop.num")).toString();
+			shop.setShopNum(shopNum);
+			
+			String shopDescRate = page.getHtml().xpath(getXPath("shop.descrate")).toString();
+			shop.setShopDescrate(shopDescRate);
+			String shopDescInfo = page.getHtml().xpath(getXPath("shop.descinfo1")).toString() + page.getHtml().xpath(getXPath("shop.descinfo2")).toString();
+			shop.setShopDescinfo(shopDescInfo);
+			String shopServiceRate = page.getHtml().xpath(getXPath("shop.servicerate")).toString();
+			shop.setShopServicerate(shopServiceRate);
+			String shopServiceInfo = page.getHtml().xpath(getXPath("shop.serviceinfo1")).toString() + page.getHtml().xpath(getXPath("shop.serviceinfo2")).toString();
+			shop.setShopServiceinfo(shopServiceInfo);
+			String shopShipRate = page.getHtml().xpath(getXPath("shop.shiprate")).toString();
+			shop.setShopShiprate(shopShipRate);
+			String shopShipInfo = page.getHtml().xpath(getXPath("shop.shipinfo1")).toString() + page.getHtml().xpath(getXPath("shop.shipinfo2")).toString();
+			shop.setShopShipinfo(shopShipInfo);
+			String shopGoodRate = page.getHtml().xpath(getXPath("shop.goodrate")).toString();
+			shop.setShopGoodrate(shopGoodRate);
+			page.putField("shop", shop);
+		}
 	}
 
 	@Override
 	public Site getSite() {
 		return config;
 	}
+
+	public String getXPath(String pro) {
+		return properties.getProperty(pro).toString();
+	}
+
 	public static void main(String[] args) {
-		
-		TaobaoConfig config=new TaobaoConfig();
+		InputStream inputStream = TaobaoProcessor.class.getClassLoader().getResourceAsStream("taobao.properties");
+		try {
+			properties.load(inputStream);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		TaobaoConfig config = new TaobaoConfig();
 		config.setUrl("http://pipiguo.taobao.com/category.htm");
 		config.setUrlRegex("http://pipiguo\\.taobao\\.com/category\\.htm\\?mid=\\w+-\\d+-\\d+&pageNo=\\d+");
-		config.setThread(5);
-		TaobaoProcessor process=new TaobaoProcessor(config);
-	    Spider.create(process).addUrl(config.getUrl()).thread(config.getThread()).addPipeline(new TaobaoPipeline())
-	                .start();
-	    
-//	    "http://pipiguo.taobao.com/category.htm?mid=w-4747105506-0&pageNo=2".
-//	    matches("http://pipiguo\\.taobao\\.com/category\\.htm\\?mid=\\w+-\\d+-\\d+&pageNo=\\d+")
+		config.setThread(10);
+		TaobaoProcessor process = new TaobaoProcessor(config);
+		Spider.create(process).addUrl(config.getUrl()).thread(config.getThread()).addPipeline(new TaobaoPipeline()).start();
+
+		// "http://pipiguo.taobao.com/category.htm?mid=w-4747105506-0&pageNo=2".
+		// matches("http://pipiguo\\.taobao\\.com/category\\.htm\\?mid=\\w+-\\d+-\\d+&pageNo=\\d+")
 	}
 }
